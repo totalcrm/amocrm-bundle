@@ -1,0 +1,11 @@
+amo_crm_connect:
+  path:     /login
+  defaults: { _controller: TotalCRMAmoCRM:Default:connect }
+
+amo_crm_check:
+  path:     /check
+  defaults: { _controller: TotalCRMAmoCRM:Default:connectCheck }
+
+amo_crm_homepage:
+  path:     /home
+  defaults: { _controller: TotalCRMAmoCRM:Default:index }
