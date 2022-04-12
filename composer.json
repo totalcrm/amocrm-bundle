@@ -1,5 +1,5 @@
 {
-    "name": "totalcrm/amocrm_bundle",
+    "name": "totalcrm/amocrm-bundle",
     "type": "symfony-bundle",
     "description": "Symfony bundle for API AmoCRM API Library",
     "keywords": ["symfony", "calendar", "bundle", "contacts", "AmoCRM"],
