@@ -11,7 +11,6 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 class Configuration implements ConfigurationInterface
 {
-
     /**
      * @return TreeBuilder
      */
@@ -21,18 +20,12 @@ class Configuration implements ConfigurationInterface
         $rootNode = $treeBuilder->getRootNode();
         $rootNode
             ->children()
-            ->scalarNode('tenant_id')->end()
-            ->scalarNode('client_id')->end()
-            ->scalarNode('client_secret')->end()
-            ->scalarNode('redirect_uri')->end()
-            ->scalarNode('home_page')->end()
-            ->scalarNode('prefer_time_zone')->end()
-            ->scalarNode('version')->end()
-            ->scalarNode('storage_manager')->end()
-            ->scalarNode('stateless')->end()
-            ->scalarNode('contact_folder')->end()
-            ->variableNode('scopes')->end()
-            ->end()
+                ->scalarNode('client_id')->end()
+                ->scalarNode('client_secret')->end()
+                ->scalarNode('redirect_uri')->end()
+                ->scalarNode('base_domain')->end()
+                ->scalarNode('home_page')->end()
+                ->end()
             ->end()
         ;
 

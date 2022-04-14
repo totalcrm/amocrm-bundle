@@ -18,41 +18,42 @@ use Exception;
  */
 class DefaultController extends AbstractController
 {
-
     /**
-     * @param Request $request
-     * @return mixed
-     * @throws Exception
-     */
-    public function indexAction(Request $request)
-    {
-        $client = $this->get('amo_crm.client');
-        $session = $this->get('session');
-
-    }
-
-    public function connectAction()
-    {
-        return $this->get('amo_crm.client')->redirect();
-    }
-
-    /**
-     * After going to Office365, you're redirected back here
-     * because this is the "graph_check" you configured
-     * in config.yml
      * @param Request $request
      * @return RedirectResponse
-     * @throws Exception
+     * @throws \Exception
      */
-    public function connectCheckAction(Request $request): RedirectResponse
+    public function requestAction(Request $request): RedirectResponse
     {
         /** @var AmoCRMClient $client */
         $client = $this->get('amo_crm.client');
-        $token = $client->getAccessToken();
-        $tokenStorage = $this->get("amo_crm.session_storage");
-        $tokenStorage->setToken($token);
-        $homePage = $this->getParameter("amo_crm")["home_page"];
 
-        return new RedirectResponse($this->generateUrl($homePage));
+        return new RedirectResponse($client->redirect());
+    }
+
+    /**
+     * @param Request $request
+     * @return RedirectResponse
+     * @throws \Exception
+     */
+    public function authAction(Request $request): RedirectResponse
+    {
+        /** @var AmoCRMClient $client */
+        $client = $this->get('amo_crm.client');
+        $authorizationCode = $request->get('code');
+
+        try {
+            $client->setAuthorizationCode($authorizationCode);
+        } catch (\Exception $e) {
+        }
+
+        try {
+            $token = $client->refreshToken();
+        } catch (\Exception $e) {
+        }
+
+        $redirectPage = $this->container->getParameter("amo_crm")["home_page"];
+
+        return new RedirectResponse($this->generateUrl($redirectPage, $request->query->all()));
     }
 }

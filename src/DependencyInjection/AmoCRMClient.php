@@ -2,16 +2,24 @@
 
 namespace TotalCRM\AmoCRM\DependencyInjection;
 
-use TotalCRM\AmoCRM\Token\SessionStorage;
+use AmoCRM\Exceptions\AmoCRMoAuthApiException;
+use AmoCRM\OAuth2\Client\Provider\AmoCRMException;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
+use AmoCRM\Client\AmoCRMApiClient;
+use AmoCRM\Client\AmoCRMApiClientFactory;
+
+use TotalCRM\AmoCRM\Token\SessionStorage;
+
 use League\OAuth2\Client\Provider\AbstractProvider;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Provider\ResourceOwnerInterface;
 use League\OAuth2\Client\Token\AccessToken;
+use League\OAuth2\Client\Token\AccessTokenInterface;
 use RuntimeException;
 use Exception;
 
@@ -21,16 +29,13 @@ use Exception;
  */
 class AmoCRMClient
 {
-    public const AUTHORITY_URL = 'https://login.amocrm.com';
-    public const RESOURCE_ID = 'https://amocrm.com';
-    private AmoCRMProvider $provider;
+    private AmoCRMApiClient $apiClient;
     private FilesystemAdapter $cacheAdapter;
     private array $config;
-    private $storageManager;
+    private SessionStorage $storageManager;
 
     private int $expires;
     private string $cacheDirectory;
-    private string $tenantId;
 
     /**
      * AmoCRMClient constructor.
@@ -39,37 +44,36 @@ class AmoCRMClient
     public function __construct(ContainerInterface $container)
     {
         $this->config = $container->getParameter('amo_crm');
-        $this->storageManager = $container->get($this->config['storage_manager']);
+        $this->storageManager = $container->get("amo_crm.session_storage");
         $this->expires = 525600; //1 year
         $this->cacheDirectory = $container->getParameter('kernel.project_dir') . ($this->config['cache_path'] ?? '/var/cache_adapter');
-        $this->tenantId = $this->config['tenant_id'] ?? '';
         $this->cacheAdapter = new FilesystemAdapter('app.cache.amo_crm', $this->expires, $this->cacheDirectory);
+
+        $clientId = $this->config['client_id'];
+        $clientSecret = $this->config['client_secret'];
+        $redirectUri = $this->config['redirect_uri'];
+        $baseDomain = $this->config['base_domain'];
         
-        $options = [
-            'clientId' => $this->config['client_id'],
-            'clientSecret' => $this->config['client_secret'],
-            //'redirectUri' => "http://localhost:8000" . $container->get('router')->generate($this->config['redirect_uri']),
-            'redirectUri' => "https://localhost/amo_crm/auth",
-            'urlResourceOwnerDetails' => self::RESOURCE_ID . "/v1.0/me",
-            "urlAccessToken" => self::AUTHORITY_URL . '/'. $this->tenantId .'/oauth2/v2.0/token',
-            "urlAuthorize" => self::AUTHORITY_URL . '/'. $this->tenantId . '/oauth2/v2.0/authorize',
-        ];
-        
-        $this->provider = new AmoCRMProvider($options);
+        $this->apiClient = new AmoCRMApiClient($clientId, $clientSecret, $redirectUri);
+        $this->apiClient->setAccountBaseDomain($baseDomain);
     }
 
     /**
-     * @param $code
+     * @return AmoCRMApiClient
      */
-    public function setAuthorizationCode($code): void
+    public function getApiClient()
     {
-        $token = $this->provider->getAccessToken('authorization_code', [
-            'code' => $code,
-        ]);
-
-        $this->storageManager->setToken($token);
+        return $this->apiClient;
     }
 
+    /**
+     * @return SessionStorage
+     */
+    public function getStorageManager()
+    {
+        return $this->storageManager;
+    }
+    
     /**
      *  Return the configuration of AmoCRM
      * @return array
@@ -80,19 +84,32 @@ class AmoCRMClient
     }
 
     /**
+     * @param string|null $code
+     */
+    public function setAuthorizationCode(?string $code = ''): void
+    {
+        /** @var AccessToken $accessToken */
+        $accessToken = $this->apiClient->getOAuthClient()->getAccessTokenByCode($code);
+        $this->storageManager->setToken($accessToken);
+    }
+
+    /**
      * Creates a RedirectResponse that will send the user to the OAuth2 server (e.g. send them to Facebook).
-     * @param OutputInterface|null $output
      * @return string
      */
-    public function redirect(?OutputInterface $output = null): string
+    public function redirect(): string
     {
-        $options = [];
-        $scopes = $this->config["scopes"];
-        if (!empty($scopes)) {
-            $options['scope'] = implode(" ", $scopes);
-        }
+        $state = bin2hex(random_bytes(16));
 
-        return $this->provider->getAuthorizationUrl($options);
+        $options = [
+            'state' => $state,
+            'mode' => 'post_message',
+        ];
+
+        $url = $this->apiClient->getOAuthClient()->getAuthorizeUrl($options);
+        
+        
+        return $url;
     }
 
     /**
@@ -102,7 +119,6 @@ class AmoCRMClient
      */
     public function getAccessToken(): AccessToken
     {
-
         $cacheKey = 'authorization_code';
         $authorizationCode = null;
 
@@ -111,9 +127,7 @@ class AmoCRMClient
             $authorizationCode = $cacheItem->get();
         }
 
-        $token = $this->provider->getAccessToken('authorization_code', [
-            'code' => $authorizationCode,
-        ]);
+        $token = $this->apiClient->getOAuthClient()->getAccessTokenByCode($authorizationCode);
 
         $this->storageManager->setToken($token);
 
@@ -121,64 +135,24 @@ class AmoCRMClient
     }
 
     /**
-     * @return mixed
-     */
-    public function getstorageManager()
-    {
-        return $this->storageManager;
-    }
-
-    /**
-     * @param AccessToken $accessToken
-     * @return mixed
-     */
-    public function fetchUserFromToken(AccessToken $accessToken)
-    {
-        return $this->provider->getResourceOwner($accessToken);
-    }
-
-    /**
-     * @return ResourceOwnerInterface
-     * @throws Exception
-     */
-    public function fetchUser(): ResourceOwnerInterface
-    {
-        $token = $this->getAccessToken();
-
-        return $this->fetchUserFromToken($token);
-    }
-
-    /**
-     * Returns the underlying OAuth2 provider.
-     * @return AmoCRMProvider
-     */
-    public function getOAuth2Provider(): AmoCRMProvider
-    {
-        return $this->provider;
-    }
-
-    /**
      * @return AccessToken
-     * @throws Exception
+     * @throws Exception|AmoCRMException
      */
-    public function getNewToken(): AccessToken
+    public function refreshToken(): AccessToken
     {
-        /** @var AccessToken $oldToken */
-        $oldToken = $this->storageManager->getToken();
+        /** @var AccessToken $accessToken */
+        $accessToken = $this->storageManager->getToken();
 
-        if ($oldToken->hasExpired()) {
-            if ($oldToken->getRefreshToken() === null) {
-                throw new RuntimeException("No refresh Token");
-            }
-            $newAccessToken = $this->provider->getAccessToken('refresh_token', [
-                'refresh_token' => $oldToken->getRefreshToken()
-            ]);
-            $this->storageManager->setToken($newAccessToken);
+        $this->apiClient->setAccessToken($accessToken)
+            ->setAccountBaseDomain($this->config['base_domain'])
+            ->onAccessTokenRefresh(
+                function (AccessTokenInterface $accessToken) {
+                    $this->storageManager->setToken($accessToken);
+                }
+            )
+        ;
 
-            return $newAccessToken;
-        }
-
-        return $oldToken;
+        return $accessToken;
     }
 
 }

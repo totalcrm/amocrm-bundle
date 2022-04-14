@@ -4,10 +4,6 @@ namespace TotalCRM\AmoCRM\DependencyInjection;
 
 use TotalCRM\AmoCRM\DependencyInjection\AmoCRMClient;
 
-use AmoCRM\Http\GraphCollectionRequest;
-use AmoCRM\Http\GraphRequest;
-use AmoCRM\Graph;
-use AmoCRM\Model;
 use DateTime;
 use Exception;
 
@@ -18,7 +14,6 @@ use Exception;
 class AmoCRMRequest
 {
     private AmoCRMClient $client;
-    private Graph $graph;
 
     /**
      * AmoCRMRequest constructor.
@@ -27,7 +22,6 @@ class AmoCRMRequest
     public function __construct(AmoCRMClient $client)
     {
         $this->client = $client;
-        $this->graph = new Graph();
     }
 
     /**

@@ -31,16 +31,16 @@ class SessionStorage implements TokenStorageInterface
     }
 
     /**
-     * @param AccessToken $token
+     * @param AccessToken|AccessTokenInterface $token
      * @return void
      */
-    public function setToken(AccessToken $token): void
+    public function setToken($token): void
     {
         $options = [
             'access_token' => $token->getToken(),
             'refresh_token' => $token->getRefreshToken(),
             'expires' => $token->getExpires(),
-            'resource_owner_id' => $token->getResourceOwnerId(),
+            'baseDomain' => 'vipflat.amocrm.ru',
         ];
 
         $cacheItem = $this->cacheAdapter->getItem($this->cacheKey);
