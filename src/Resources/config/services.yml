@@ -1,10 +1,9 @@
 services:
 
-    amo_crm.controller_handlers:
-        public: true
-        namespace: TotalCRM\AmoCRM\Controller\
-        resource: '../../../src/Controller/*'
-        tags: [amo_crm.controller_handlers]
+    TotalCRM\AmoCRM\Controller\DefaultController:
+        calls:
+            - method: setContainer
+              arguments: ['@service_container']
 
     amo_crm.client:
         public: true
