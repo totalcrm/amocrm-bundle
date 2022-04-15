@@ -1,9 +1,15 @@
 services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
 
-    TotalCRM\AmoCRM\Controller\DefaultController:
-        calls:
-            - method: setContainer
-              arguments: ['@service_container']
+    TotalCRM\AmoCRM\:
+        resource: '../../../src/'
+        exclude:
+            - '../../../src/DependencyInjection/'
+            - '../../../src/Manager/'
+            - '../../../src/EventListener/'
+            - '../../../src/Token/'
 
     amo_crm.client:
         public: true

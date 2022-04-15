@@ -8,9 +8,8 @@ use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use DateTime;
-use Exception;
 
 /**
  * Class DefaultController
@@ -18,6 +17,19 @@ use Exception;
  */
 class DefaultController extends AbstractController
 {
+    protected ContainerInterface $containerInterface;
+    protected AmoCRMClient $client;
+
+    /**
+     * DefaultController constructor.
+     * @param ContainerInterface $container
+     */
+    public function __construct(ContainerInterface $container)
+    {
+        $this->containerInterface = $container;
+        $this->client = $this->containerInterface->get('amo_crm.client');
+    }
+
     /**
      * @param Request $request
      * @return RedirectResponse
@@ -25,10 +37,7 @@ class DefaultController extends AbstractController
      */
     public function requestAction(Request $request): RedirectResponse
     {
-        /** @var AmoCRMClient $client */
-        $client = $this->container->get('amo_crm.client');
-
-        return new RedirectResponse($client->redirect());
+        return new RedirectResponse($this->client->redirect());
     }
 
     /**
@@ -38,21 +47,19 @@ class DefaultController extends AbstractController
      */
     public function authAction(Request $request): RedirectResponse
     {
-        /** @var AmoCRMClient $client */
-        $client = $this->container->get('amo_crm.client');
         $authorizationCode = $request->get('code');
 
         try {
-            $client->setAuthorizationCode($authorizationCode);
+            $this->client->setAuthorizationCode($authorizationCode);
         } catch (\Exception $e) {
         }
 
         try {
-            $token = $client->refreshToken();
+            $token = $this->client->refreshToken();
         } catch (\Exception $e) {
         }
 
-        $redirectPage = $this->container->getParameter("amo_crm")["home_page"];
+        $redirectPage = $this->containerInterface->getParameter("amo_crm")["home_page"];
 
         return new RedirectResponse($this->generateUrl($redirectPage, $request->query->all()));
     }
