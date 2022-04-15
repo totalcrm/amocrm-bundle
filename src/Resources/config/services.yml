@@ -1,7 +1,10 @@
 services:
 
-    TotalCRM\AmoCRM\Controller\DefaultController:
+    amo_crm.controller_handlers:
         public: true
+        namespace: TotalCRM\AmoCRM\Controller\
+        resource: '../../../src/Controller/*'
+        tags: [amo_crm.controller_handlers]
 
     amo_crm.client:
         public: true

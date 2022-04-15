@@ -90,7 +90,7 @@ class AmoCRMClient
     public function setAuthorizationCode(?string $code = ''): AccessToken
     {
         /** @var AccessToken $accessToken */
-        $accessToken = $this->apiClient->getOAuthClient()->getAccessTokenByCode($code);
+        $accessToken = $this->apiClient->getOAuthClient()->getAccessTokenByCode($code ?: '');
         $this->storageManager->setToken($accessToken);
         
         return $accessToken;
