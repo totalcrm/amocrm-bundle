@@ -2,7 +2,6 @@ services:
 
     TotalCRM\AmoCRM\Controller\DefaultController:
         public: true
-        autowire: true
 
     amo_crm.client:
         public: true
