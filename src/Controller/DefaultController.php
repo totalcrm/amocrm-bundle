@@ -26,7 +26,7 @@ class DefaultController extends AbstractController
     public function requestAction(Request $request): RedirectResponse
     {
         /** @var AmoCRMClient $client */
-        $client = $this->get('amo_crm.client');
+        $client = $this->container->get('amo_crm.client');
 
         return new RedirectResponse($client->redirect());
     }
@@ -39,7 +39,7 @@ class DefaultController extends AbstractController
     public function authAction(Request $request): RedirectResponse
     {
         /** @var AmoCRMClient $client */
-        $client = $this->get('amo_crm.client');
+        $client = $this->container->get('amo_crm.client');
         $authorizationCode = $request->get('code');
 
         try {
