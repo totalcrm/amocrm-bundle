@@ -2,17 +2,13 @@
 
 namespace TotalCRM\AmoCRM\Manager;
 
+use AmoCRM\Models\ContactModel;
+use Carbon\Carbon;
 use RuntimeException;
-use TotalCRM\AmoCRM\DependencyInjection\AmoCRMRequest;
-
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use TotalCRM\AmoCRM\DependencyInjection\AmoCRMClient;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Cursor;
-
-use AmoCRM\Exception\GraphException;
-use AmoCRM\Http\GraphCollectionRequest;
-use AmoCRM\Model;
-use GuzzleHttp\Exception\GuzzleException;
-use Exception;
 
 /**
  * Class ContactManager
@@ -20,15 +16,23 @@ use Exception;
  */
 class ContactManager
 {
-    private AmoCRMRequest $request;
+    private ?array $config = [];
+    private ?array $fields = [];
+    private AmoCRMClient $client;
 
     /**
      * ContactManager constructor.
-     * @param AmoCRMRequest $request
+     * @param AmoCRMClient $client
      */
-    public function __construct(AmoCRMRequest $request)
+    public function __construct(AmoCRMClient $client)
     {
-        $this->request = $request;
+        $this->client = $client;
+        $this->config = $client->getConfig();
+
+        $field_names = $this->config['field_names'] ?? [];
+        foreach ($field_names as $field) {
+            $this->fields[$field['id']] = $field;
+        }
     }
 
     /**
@@ -40,160 +44,127 @@ class ContactManager
     }
 
     /**
-     * @param string $contactFolder
-     * @param bool|null $isContactAll
-     * @param GraphCollectionRequest|null $collectionRequest
      * @return mixed
-     * @throws Exception
+     * @throws \Exception
      */
-    public function getContacts($contactFolder = null, $isContactAll = true, GraphCollectionRequest $collectionRequest = null)
+    public function getContacts()
     {
-        if ($contactFolder !== null) {
-            $endpoint = '/me/contactfolders/'.$contactFolder.'/contacts';
-        } else {
-            $endpoint = '/me/contacts'; 
-        }
-
-        if (!$collectionRequest) {
-            /** @var GraphCollectionRequest $collectionRequest */
-            $collectionRequest = $this->request
-                ->createCollectionRequest("GET", $endpoint)
-                ->setReturnType(Model\Contact::class);
-            $collectionRequest->setPageSize(500);
-        }
-        
-        $results = [];
-        $iteration = 1;
-        $totalItems = 0;
-
-        if ($this->output instanceof OutputInterface) {
-            $dt = new \DateTime();
-            $cursor = new Cursor($this->output);
-            $this->output->writeln(['<info>' . $dt->format('Y-m-d H:i:s') . ' - Import contacts</info>']);
-        }
-
-        execute:
-        $resultsExecute = $collectionRequest->getPage();
-
-        $totalItems = $totalItems + count($resultsExecute);
-        if ($this->output instanceof OutputInterface) {
-            $dt = new \DateTime();
-            $cursor->moveUp();
-            $cursor->clearLine();
-            $this->output->writeln(['<info>' . $dt->format('Y-m-d H:i:s') . ' - Import contacts: '.$totalItems.'</info>']);
-        }
-
-        foreach ($resultsExecute as $item) {
-            $results[] = $item;
-        }
-
-        if ($iteration <= 1000 && !$collectionRequest->isEnd() && $isContactAll) {
-            ++$iteration;
-            goto execute;
-        }
-
-        if ($this->output instanceof OutputInterface) {
-            $dt = new \DateTime();
-            $cursor->moveUp();
-            $cursor->clearLine();
-            $this->output->writeln(['<info>' . $dt->format('Y-m-d H:i:s') . ' - Total imported: '.$totalItems.'</info>']);
-        }
-
-        if (!$isContactAll) {
-            return [
-                'results' => $results,
-                'collectionRequest' => $collectionRequest,
-                'isEnd' => $collectionRequest->isEnd()
-            ];
-        }
-
-        return $results;
-    }
-
-    /**
-     * @return Model\Contact[]|array
-     * @throws Exception
-     */
-    public function getContactFolders(): array
-    {
-        $endpoint = '/me/contactFolders';
-
-        return $this->request
-            ->createCollectionRequest("GET", $endpoint)
-            ->setReturnType(Model\Contact::class)
-            ->execute();
     }
 
     /**
      * @param $contactId
      * @return Model\Contact|mixed
-     * @throws Exception
+     * @throws \Exception
      */
     public function getContact($contactId = null)
     {
-        if ($contactId === null) {
-            throw new RuntimeException("Your contactId is null");
-        }
-
-        return $this->request
-            ->createRequest('GET', '/me/contacts/' . $contactId)
-            ->setReturnType(Model\Contact::class)
-            ->execute();
     }
 
     /**
      * Create an contact
      * @param Model\Contact $contact
      * @return mixed|array|void
-     * @throws Exception
+     * @throws \Exception
      */
-    public function addContact(Model\Contact $contact = null)
+    public function addContact($contact = null)
     {
-        if ($contact === null) {
-            throw new RuntimeException("Your Contact is null");
-        }
-
-        return $this->request
-            ->createRequest('POST', '/me/contacts')
-            ->attachBody($contact->jsonSerialize())
-            ->setReturnType(Model\Contact::class)
-            ->execute();
     }
 
     /**
      * Update an Contact
      * @param Model\Contact|null $contact
      * @return mixed|array|void
-     * @throws Exception
+     * @throws \Exception
      */
-    public function updateContact(?Model\Contact $contact = null)
+    public function updateContact($contact = null)
     {
-        if ($contact === null) {
-            throw new RuntimeException("Your contact is null");
-        }
-
-        return $this->request
-            ->createRequest('PATCH', '/me/contacts/' . $contact->getId())
-            ->attachBody($contact->jsonSerialize())
-            ->setReturnType(Model\Contact::class)
-            ->execute();
     }
 
     /**
      * Delete an contact
      * @param $id
      * @return mixed|array
-     * @throws Exception
+     * @throws \Exception
      */
     public function deleteContact($id = null)
     {
-        if ($id === null) {
-            throw new RuntimeException("Contact id is null");
-        }
-
-        return $this->request
-            ->createRequest('DELETE', '/me/contacts/' . $id)
-            ->execute();
     }
 
+    /**
+     * @param ContactModel $contact
+     * @return array|null
+     */
+    public function parseContact(?ContactModel $contact = null): ?array
+    {
+        if (!$contact instanceof ContactModel) {
+            return null;
+        }
+
+        $item = $contact->toArray();
+        unset($item['custom_fields_values']);
+        foreach ($item as $key => $value) {
+            if ($value instanceof Carbon || in_array($key, ['created_at', 'updated_at'])) {
+                $item[$key] = date('c', $value);
+            }
+        }
+
+        $customFields = $contact->getCustomFieldsValues();
+        $customFieldsArray = $customFields ? $customFields->toArray() : [];
+        foreach ($customFieldsArray as $customField) {
+
+            if (!isset($this->fields[$customField['field_id']])) {
+                continue;
+            }
+
+            $config_field = $this->fields[$customField['field_id']];
+
+            $customFieldValues = $customField['values'];
+            $values = [];
+            foreach ($customFieldValues as $customFieldValue) {
+                if ($customFieldValue['value'] instanceof Carbon) {
+                    $customFieldValue['value'] = $customFieldValue['value']->format('c');
+                }
+                $values[] = $customFieldValue;
+            }
+
+            if (!count($values)) {
+                continue;
+            }
+
+            if ($config_field['type'] === 'int') {
+                $item[$config_field['name']] = (int)$values[0]['value'];
+                continue;
+            }
+            if ($config_field['type'] === 'string') {
+                $item[$config_field['name']] = trim($values[0]['value']);
+                continue;
+            }
+            if ($config_field['type'] === 'bool') {
+                $item[$config_field['name']] = (bool)$values[0]['value'];
+                continue;
+            }
+            if ($config_field['type'] === 'date') {
+                $item[$config_field['name']] = (new \DateTime(trim($values[0]['value'])))->format('Y-m-d');
+                continue;
+            }
+            if ($config_field['type'] === 'array') {
+                $item[$config_field['name']] = $values;
+                continue;
+            }
+            $item[$config_field['name']] = trim($values[0]['value']);
+        }
+
+        foreach ($this->fields as $config_field) {
+            if (!isset($item[$config_field['name']])) {
+                $item[$config_field['name']] = null;
+            }
+        }
+
+        ksort($item);
+
+        dump($item);
+        //dump($contact);
+
+        return $item;
+    }
 }

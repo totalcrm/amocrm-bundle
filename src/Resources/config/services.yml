@@ -16,20 +16,10 @@ services:
         class: TotalCRM\AmoCRM\DependencyInjection\AmoCRMClient
         arguments: ['@service_container']
 
-    amo_crm.request:
-        public: true
-        class: TotalCRM\AmoCRM\DependencyInjection\AmoCRMRequest
-        arguments: ["@amo_crm.client"]
-
     amo_crm.contact_manager:
         public: true
         class: TotalCRM\AmoCRM\Manager\ContactManager
-        arguments: ["@amo_crm.request"]
-
-    amo_crm.calendar_manager:
-        public: true
-        class: TotalCRM\AmoCRM\Manager\CalendarManager
-        arguments: ["@amo_crm.request"]
+        arguments: ["@amo_crm.client"]
 
     amo_crm.redirect_exception_listener:
         public: true

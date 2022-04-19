@@ -22,12 +22,23 @@ class DefaultController extends AbstractController
 
     /**
      * DefaultController constructor.
-     * @param ContainerInterface $container
+     * @param ContainerInterface $containerInterface
      */
-    public function __construct(ContainerInterface $container)
+    public function __construct(ContainerInterface $containerInterface)
     {
-        $this->containerInterface = $container;
+        $this->containerInterface = $containerInterface;
         $this->client = $this->containerInterface->get('amo_crm.client');
+    }
+
+    /**
+     * @param Request $request
+     * @return RedirectResponse
+     * @throws \Exception
+     */
+    public function webhookAction(Request $request): RedirectResponse
+    {
+        $redirectPage = $this->containerInterface->getParameter("amo_crm")["webhook_page"];
+        return new RedirectResponse($this->generateUrl($redirectPage, $request->query->all()));
     }
 
     /**

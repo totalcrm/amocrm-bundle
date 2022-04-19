@@ -25,8 +25,18 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('redirect_uri')->end()
                 ->scalarNode('base_domain')->end()
                 ->scalarNode('home_page')->end()
+                ->scalarNode('webhook_page')->end()
+                ->arrayNode('field_names')
+                    ->arrayPrototype()
+                        ->children()
+                            ->integerNode('id')->end()
+                            ->scalarNode('name')->end()
+                            ->scalarNode('type')->end()
+                        ->end()
+                    ->end()
                 ->end()
             ->end()
+        ->end()
         ;
 
         return $treeBuilder;

@@ -1,7 +1,11 @@
+amo_crm_webhook:
+    path:     /webhook
+    defaults: { _controller: TotalCRM\AmoCRM\Controller\DefaultController::webhookAction }
+
 amo_crm_auth:
-  path:     /auth
-  defaults: { _controller: TotalCRM\AmoCRM\Controller\DefaultController::authAction }
+    path:     /auth
+    defaults: { _controller: TotalCRM\AmoCRM\Controller\DefaultController::authAction }
 
 amo_crm_request:
-  path:     /request
-  defaults: { _controller: TotalCRM\AmoCRM\Controller\DefaultController::requestAction }
+    path:     /request
+    defaults: { _controller: TotalCRM\AmoCRM\Controller\DefaultController::requestAction }
