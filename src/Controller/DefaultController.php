@@ -37,8 +37,8 @@ class DefaultController extends AbstractController
      */
     public function webhookAction(Request $request): RedirectResponse
     {
-        $redirectPage = $this->containerInterface->getParameter("amo_crm")["webhook_page"];
-        return new RedirectResponse($this->generateUrl($redirectPage, $request->query->all()));
+        $redirectPage = $this->containerInterface->getParameter("amo_crm")["subscription_uri"];
+        return new RedirectResponse($redirectPage);
     }
 
     /**
@@ -70,7 +70,7 @@ class DefaultController extends AbstractController
         } catch (\Exception $e) {
         }
 
-        $redirectPage = $this->containerInterface->getParameter("amo_crm")["home_page"];
+        $redirectPage = $this->containerInterface->getParameter("amo_crm")["homepage_route"];
 
         return new RedirectResponse($this->generateUrl($redirectPage, $request->query->all()));
     }

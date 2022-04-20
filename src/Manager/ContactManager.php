@@ -16,9 +16,11 @@ use Symfony\Component\Console\Cursor;
  */
 class ContactManager
 {
-    private ?array $config = [];
-    private ?array $fields = [];
     private AmoCRMClient $client;
+    private ?array $config = [];
+    private ?array $fieldNames = [];
+    private ?int $fieldEmails;
+    private ?int $fieldPhones;
 
     /**
      * ContactManager constructor.
@@ -29,9 +31,11 @@ class ContactManager
         $this->client = $client;
         $this->config = $client->getConfig();
 
-        $field_names = $this->config['field_names'] ?? [];
-        foreach ($field_names as $field) {
-            $this->fields[$field['id']] = $field;
+        $this->fieldPhones = $this->config['field_phones'] ?? null;
+        $this->fieldEmails = $this->config['field_emails'] ?? null;
+        $fieldNames = $this->config['field_names'] ?? [];
+        foreach ($fieldNames as $fieldName) {
+            $this->fieldNames[$fieldName['id']] = $fieldName;
         }
     }
 
@@ -53,7 +57,7 @@ class ContactManager
 
     /**
      * @param $contactId
-     * @return Model\Contact|mixed
+     * @return ContactModel|mixed
      * @throws \Exception
      */
     public function getContact($contactId = null)
@@ -103,20 +107,34 @@ class ContactManager
         $item = $contact->toArray();
         unset($item['custom_fields_values']);
         foreach ($item as $key => $value) {
-            if ($value instanceof Carbon || in_array($key, ['created_at', 'updated_at'])) {
+            if ($value && ($value instanceof Carbon || in_array($key, ['created_at', 'updated_at', 'closest_task_at']))) {
                 $item[$key] = date('c', $value);
             }
         }
+
+        $itemPhones = [];
+        $itemPhonesWork = [];
+        $itemPhonesHome = [];
+        $itemPhonesMobile = [];
+        $itemPhonesOther = [];
+
+        $itemEmails = [];
+        $itemEmailsWork = [];
+        $itemEmailsOther = [];
+        $itemEmailsPriv = [];
 
         $customFields = $contact->getCustomFieldsValues();
         $customFieldsArray = $customFields ? $customFields->toArray() : [];
         foreach ($customFieldsArray as $customField) {
 
-            if (!isset($this->fields[$customField['field_id']])) {
+            if (!isset($this->fieldNames[$customField['field_id']])) {
                 continue;
             }
 
-            $config_field = $this->fields[$customField['field_id']];
+            $configField = $this->fieldNames[$customField['field_id']];
+            $configFieldId = $configField['id'] ?? null;
+            $configFieldType = $configField['type'] ?? null;
+            $configFieldName = $configField['name'] ?? null;
 
             $customFieldValues = $customField['values'];
             $values = [];
@@ -124,6 +142,7 @@ class ContactManager
                 if ($customFieldValue['value'] instanceof Carbon) {
                     $customFieldValue['value'] = $customFieldValue['value']->format('c');
                 }
+                unset($customFieldValue['enum_id']);
                 $values[] = $customFieldValue;
             }
 
@@ -131,34 +150,135 @@ class ContactManager
                 continue;
             }
 
-            if ($config_field['type'] === 'int') {
-                $item[$config_field['name']] = (int)$values[0]['value'];
+
+            if ((int)$configFieldId === (int)$this->fieldPhones && (int)$configFieldId && (int)$this->fieldPhones) {
+                foreach ($values as $value) {
+                    if (isset($value['enum_code'], $value['value']) && $value['enum_code'] && $value['value']) {
+                        if (!in_array($value['value'], $itemPhones)) {
+                            $itemPhones[] = $value['value'];
+                        }
+
+                        if (in_array($value['enum_code'], ['WORK', 'WORKDD'])) {
+                            if (!in_array($value['value'], $itemPhonesWork)) {
+                                $itemPhonesWork[] = $value['value'];
+                            }
+                            continue;
+                        }
+
+                        if (in_array($value['enum_code'], ['OTHER', 'FAX'])) {
+                            if (!in_array($value['value'], $itemPhonesOther)) {
+                                $itemPhonesOther[] = $value['value'];
+                            }
+                            continue;
+                        }
+
+                        if ($value['enum_code'] === 'HOME') {
+                            if (!in_array($value['value'], $itemPhonesHome)) {
+                                $itemPhonesHome[] = $value['value'];
+                            }
+                            continue;
+                        }
+
+                        if ($value['enum_code'] === 'MOB') {
+                            if (!in_array($value['value'], $itemPhonesMobile)) {
+                                $itemPhonesMobile[] = $value['value'];
+                            }
+                            continue;
+                        }
+                    }
+                }
+                //continue;
+            }
+
+            if ((int)$configFieldId === (int)$this->fieldEmails && (int)$configFieldId && (int)$this->fieldEmails) {
+                foreach ($values as $value) {
+                    if (isset($value['enum_code'], $value['value']) && $value['enum_code'] && $value['value']) {
+                        if (!in_array($value['value'], $itemEmails)) {
+                            $itemEmails[] = $value['value'];
+                        }
+
+                        if ($value['enum_code'] === 'WORK') {
+                            if (!in_array($value['value'], $itemEmailsWork)) {
+                                $itemEmailsWork[] = $value['value'];
+                            }
+                            continue;
+                        }
+
+                        if ($value['enum_code'] === 'OTHER') {
+                            if (!in_array($value['value'], $itemEmailsOther)) {
+                                $itemEmailsOther[] = $value['value'];
+                            }
+                            continue;
+                        }
+
+                        if ($value['enum_code'] === 'PRIV') {
+                            if (!in_array($value['value'], $itemEmailsPriv)) {
+                                $itemEmailsPriv[] = $value['value'];
+                            }
+                            continue;
+                        }
+                    }
+                }
+                //continue;
+            }
+
+
+            if (in_array($configFieldType, ['string', '', null]) && count($values) > 1) {
+                $values[0]['value'] = json_encode($values, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            }
+
+            if ($configFieldType === 'int') {
+                $item[$configFieldName] = (int)$values[0]['value'];
                 continue;
             }
-            if ($config_field['type'] === 'string') {
-                $item[$config_field['name']] = trim($values[0]['value']);
+            if ($configFieldType === 'string') {
+                $item[$configFieldName] = trim($values[0]['value']);
                 continue;
             }
-            if ($config_field['type'] === 'bool') {
-                $item[$config_field['name']] = (bool)$values[0]['value'];
+            if ($configFieldType === 'bool') {
+                $item[$configFieldName] = (bool)$values[0]['value'];
                 continue;
             }
-            if ($config_field['type'] === 'date') {
-                $item[$config_field['name']] = (new \DateTime(trim($values[0]['value'])))->format('Y-m-d');
+            if ($configFieldType === 'date') {
+                try {
+                    $item[$configFieldName] = (new \DateTime(trim($values[0]['value'])))->format('Y-m-d');
+                } catch (\Exception $exception) {
+                }
                 continue;
             }
-            if ($config_field['type'] === 'array') {
-                $item[$config_field['name']] = $values;
+            if ($configFieldType === 'datetime') {
+                try {
+                    $item[$configFieldName] = (new \DateTime(trim($values[0]['value'])))->format('c');
+                } catch (\Exception $exception) {
+                }
                 continue;
             }
-            $item[$config_field['name']] = trim($values[0]['value']);
+            if ($configFieldType === 'array') {
+                $item[$configFieldName] = is_array($values) ? $values : [$values];
+                continue;
+            }
+            $item[$configFieldName] = trim($values[0]['value']);
         }
 
-        foreach ($this->fields as $config_field) {
-            if (!isset($item[$config_field['name']])) {
-                $item[$config_field['name']] = null;
+        foreach ($this->fieldNames as $configField) {
+            if (isset($configField['name'])
+                && $configField['name']
+                && !isset($item[$configField['name']])
+            ) {
+                $item[$configField['name']] = null;
             }
         }
+
+        $item['all_phones'] = $itemPhones ?: null;
+        $item['all_phones_work'] = $itemPhonesWork ?: null;
+        $item['all_phones_home'] = $itemPhonesHome ?: null;
+        $item['all_phones_mobile'] = $itemPhonesMobile ?: null;
+        $item['all_phones_other'] = $itemPhonesOther ?: null;
+
+        $item['all_emails'] = $itemEmails ?: null;
+        $item['all_emails_work'] = $itemEmailsWork ?: null;
+        $item['all_emails_other'] = $itemEmailsOther ?: null;
+        $item['all_emails_priv'] = $itemEmailsPriv ?: null;
 
         ksort($item);
 
