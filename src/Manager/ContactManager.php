@@ -2,6 +2,11 @@
 
 namespace TotalCRM\AmoCRM\Manager;
 
+use AmoCRM\Client\AmoCRMApiClient;
+use AmoCRM\Collections\ContactsCollection;
+use AmoCRM\EntitiesServices\Contacts;
+use AmoCRM\Exceptions\AmoCRMApiException;
+use AmoCRM\Filters\ContactsFilter;
 use AmoCRM\Models\ContactModel;
 use Carbon\Carbon;
 use RuntimeException;
@@ -17,6 +22,7 @@ use Symfony\Component\Console\Cursor;
 class ContactManager
 {
     private AmoCRMClient $client;
+    private AmoCRMApiClient $apiClient;
     private ?array $config = [];
     private ?array $fieldNames = [];
     private ?int $fieldEmails;
@@ -30,6 +36,7 @@ class ContactManager
     {
         $this->client = $client;
         $this->config = $client->getConfig();
+        $this->apiClient = $this->client->getApiClient();
 
         $this->fieldPhones = $this->config['field_phones'] ?? null;
         $this->fieldEmails = $this->config['field_emails'] ?? null;
@@ -51,17 +58,69 @@ class ContactManager
      * @return mixed
      * @throws \Exception
      */
-    public function getContacts()
+    public function getContacts(?ContactsFilter $filter = null)
     {
+        /** @var Contacts $contactsService */
+        $contactsService = $this->apiClient->contacts();
+
+        try {
+            /** @var ContactsCollection $contacts */
+            $contacts = $contactsService->get($filter);
+        } catch (\Exception $exception) {
+            return null;
+        }
+
+        $results = [];
+        $page = 0;
+
+        contacts_iteration:
+
+        ++$page;
+
+        /** @var ContactModel $contactModel */
+        foreach ($contacts as $contactModel) {
+            $results[] = $contactModel;
+        }
+
+        try {
+            $contacts = $contactsService->nextPage($contacts);
+            if ($page < 1000 && !$contacts->isEmpty()) {
+                gc_collect_cycles();
+                gc_mem_caches();
+
+                goto contacts_iteration;
+            }
+        } catch (AmoCRMApiException $e) {
+        }
+
+        return $results ?: null;
     }
 
     /**
-     * @param $contactId
+     * @param int|null $contactId
      * @return ContactModel|mixed
      * @throws \Exception
      */
-    public function getContact($contactId = null)
+    public function getContact(?int $contactId = null): ?ContactModel
     {
+        if (!$contactId) {
+            return null;
+        }
+
+        $filter = new ContactsFilter();
+        $filter->setLimit(1)->setIds([$contactId]);
+
+        /** @var Contacts $contactsService */
+        $contactsService = $this->apiClient->contacts();
+
+        try {
+            /** @var ContactsCollection $contacts */
+            $contacts = $contactsService->get($filter);
+        } catch (\Exception $exception) {
+            return null;
+        }
+
+        return $contacts->count() ? $contacts->first() : null;
     }
 
     /**
@@ -279,6 +338,8 @@ class ContactManager
         $item['all_emails_work'] = $itemEmailsWork ?: null;
         $item['all_emails_other'] = $itemEmailsOther ?: null;
         $item['all_emails_priv'] = $itemEmailsPriv ?: null;
+
+        $item['all_tags'] = $contact->getTags() ? $contact->getTags()->toArray() : null;
 
         ksort($item);
 

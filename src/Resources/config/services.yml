@@ -21,6 +21,11 @@ services:
         class: TotalCRM\AmoCRM\Manager\ContactManager
         arguments: ["@amo_crm.client"]
 
+    amo_crm.leads_manager:
+        public: true
+        class: TotalCRM\AmoCRM\Manager\LeadsManager
+        arguments: ["@amo_crm.client"]
+
     amo_crm.redirect_exception_listener:
         public: true
         class: TotalCRM\AmoCRM\EventListener\RedirectExceptionListener
