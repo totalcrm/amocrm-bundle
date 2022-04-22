@@ -201,7 +201,6 @@ class ContactManager
                 if ($customFieldValue['value'] instanceof Carbon) {
                     $customFieldValue['value'] = $customFieldValue['value']->format('c');
                 }
-                unset($customFieldValue['enum_id']);
                 $values[] = $customFieldValue;
             }
 
@@ -326,6 +325,36 @@ class ContactManager
             ) {
                 $item[$configField['name']] = null;
             }
+        }
+
+        if (isset($item['leads']) && $item['leads'] && is_array($item['leads'])) {
+            $leads = [];
+            foreach ($item['leads'] as $lead) {
+                if (isset($lead['id']) && (int)$lead['id']) {
+                    $leads[] = (int)$lead['id'];
+                }
+            }
+            $item['leads'] = $leads ?: null;
+        }
+
+        if (isset($item['tags']) && $item['tags'] && is_array($item['tags'])) {
+            $tags = [];
+            foreach ($item['tags'] as $tag) {
+                if (isset($tag['id']) && (int)$tag['id']) {
+                    $tags[] = (int)$tag['id'];
+                }
+            }
+            $item['tags'] = $tags ?: null;
+        }
+
+        if (isset($item['customers']) && $item['customers'] && is_array($item['customers'])) {
+            $customers = [];
+            foreach ($item['customers'] as $customer) {
+                if (isset($customer['id']) && (int)$customer['id']) {
+                    $customers[] = (int)$customer['id'];
+                }
+            }
+            $item['customers'] = $customers ?: null;
         }
 
         $item['all_phones'] = $itemPhones ?: null;
