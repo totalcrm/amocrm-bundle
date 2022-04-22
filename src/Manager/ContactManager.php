@@ -338,9 +338,9 @@ class ContactManager
         $item['all_emails_other'] = $itemEmailsOther ?: null;
         $item['all_emails_priv'] = $itemEmailsPriv ?: null;
 
-        $item['all_tags'] = $contact->getTags() ? $contact->getTags()->toArray() : null;
-        $item['all_leads'] = $contact->getLeads() ? $contact->getLeads()->toArray() : null;
-        $item['all_customers'] = $contact->getCustomers() ? $contact->getCustomers()->toArray() : null;
+        $item['all_tags'] = $this->clearArray($contact->getTags()->toArray());
+        $item['all_leads'] = $this->clearArray($contact->getLeads()->toArray());
+        $item['all_customers'] = $this->clearArray($contact->getCustomers()->toArray());
 
         ksort($item);
 
@@ -348,5 +348,26 @@ class ContactManager
         //dump($contact);
 
         return $item;
+    }
+
+    /**
+     * @param array|null $array
+     * @return array|null
+     */
+    private function clearArray($array)
+    {
+        if (!$array || !count($array)) {
+            return null;
+        }
+
+        if (is_array($array)) {
+            foreach ($array as $key => $item) {
+                if (is_array($item)) {
+                    $array[$key] = array_diff($item, [0, null, false, '']);
+                }
+            }
+        }
+
+        return $array;
     }
 }
