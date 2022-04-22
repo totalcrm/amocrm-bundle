@@ -366,7 +366,6 @@ class ContactManager
                     $array[$key] = array_diff($item, [0, null, false, '']);
                 }
             }
-            $array = array_diff($array, [0, null, false, '']);
         }
 
 
