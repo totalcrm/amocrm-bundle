@@ -327,36 +327,6 @@ class ContactManager
             }
         }
 
-        if (isset($item['leads']) && $item['leads'] && is_array($item['leads'])) {
-            $leads = [];
-            foreach ($item['leads'] as $lead) {
-                if (isset($lead['id']) && (int)$lead['id']) {
-                    $leads[] = (int)$lead['id'];
-                }
-            }
-            $item['leads'] = $leads ?: null;
-        }
-
-        if (isset($item['tags']) && $item['tags'] && is_array($item['tags'])) {
-            $tags = [];
-            foreach ($item['tags'] as $tag) {
-                if (isset($tag['id']) && (int)$tag['id']) {
-                    $tags[] = (int)$tag['id'];
-                }
-            }
-            $item['tags'] = $tags ?: null;
-        }
-
-        if (isset($item['customers']) && $item['customers'] && is_array($item['customers'])) {
-            $customers = [];
-            foreach ($item['customers'] as $customer) {
-                if (isset($customer['id']) && (int)$customer['id']) {
-                    $customers[] = (int)$customer['id'];
-                }
-            }
-            $item['customers'] = $customers ?: null;
-        }
-
         $item['all_phones'] = $itemPhones ?: null;
         $item['all_phones_work'] = $itemPhonesWork ?: null;
         $item['all_phones_home'] = $itemPhonesHome ?: null;
@@ -369,6 +339,8 @@ class ContactManager
         $item['all_emails_priv'] = $itemEmailsPriv ?: null;
 
         $item['all_tags'] = $contact->getTags() ? $contact->getTags()->toArray() : null;
+        $item['all_leads'] = $contact->getLeads() ? $contact->getLeads()->toArray() : null;
+        $item['all_customers'] = $contact->getCustomers() ? $contact->getCustomers()->toArray() : null;
 
         ksort($item);
 
