@@ -358,13 +358,17 @@ class ContactManager
         }
 
         if (is_array($array)) {
-            foreach ($array as $key => $item) {
-                if (is_array($item)) {
-                    $array[$key] = array_diff($item, [0, null, false, '']);
+            foreach ($array as $arrayKey => $items) {
+                if (is_array($items)) {
+                    foreach ($items as $itemKey => $item) {
+                        if (!$item) {
+                            unset($items[$itemKey]);
+                        }
+                    }
+                    $array[$arrayKey] = $items;
                 }
             }
         }
-
 
         return $array;
     }
