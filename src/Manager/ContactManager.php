@@ -344,9 +344,6 @@ class ContactManager
 
         ksort($item);
 
-        //dump($item);
-        //dump($contact);
-
         return $item;
     }
 
