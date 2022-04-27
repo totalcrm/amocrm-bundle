@@ -33,6 +33,7 @@ class Configuration implements ConfigurationInterface
                         ->children()
                             ->integerNode('id')->end()
                             ->scalarNode('name')->end()
+                            ->scalarNode('field_name')->end()
                             ->scalarNode('type')->end()
                         ->end()
                     ->end()
