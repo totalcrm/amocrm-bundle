@@ -98,10 +98,11 @@ class ContactManager
 
     /**
      * @param int|null $contactId
+     * @param array|null $with
      * @return ContactModel|mixed
      * @throws \Exception
      */
-    public function getContact(?int $contactId = null): ?ContactModel
+    public function getContact(?int $contactId = null, ?array $with = null): ?ContactModel
     {
         if (!$contactId) {
             return null;
@@ -115,7 +116,7 @@ class ContactManager
 
         try {
             /** @var ContactsCollection $contacts */
-            $contacts = $contactsService->get($filter);
+            $contacts = $contactsService->get($filter, $with);
         } catch (\Exception $exception) {
             return null;
         }
