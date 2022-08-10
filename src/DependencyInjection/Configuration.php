@@ -26,6 +26,7 @@ class Configuration implements ConfigurationInterface
                 ->scalarNode('base_domain')->end()
                 ->scalarNode('homepage_route')->end()
                 ->scalarNode('subscription_uri')->end()
+                ->scalarNode('webhook_action')->end()
                 ->scalarNode('field_emails')->end()
                 ->scalarNode('field_phones')->end()
                 ->arrayNode('field_names')
