@@ -37,8 +37,8 @@ class DefaultController extends AbstractController
      */
     public function webhookAction(Request $request): RedirectResponse
     {
-        $redirectPage = $this->containerInterface->getParameter("amo_crm")["subscription_uri"];
-        return new RedirectResponse($redirectPage);
+        $webhookAction = $this->containerInterface->getParameter("amo_crm")["webhook_action"];
+        return $this->forward($webhookAction, ['request' => $request]);
     }
 
     /**
