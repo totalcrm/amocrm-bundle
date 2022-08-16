@@ -282,9 +282,9 @@ class ContactManager
             }
 
 
-            if (in_array($configFieldType, ['string', '', null]) && count($values) > 1) {
-                $values[0]['value'] = json_encode($values, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-            }
+            //if (in_array($configFieldType, ['string', '', null]) && count($values) > 1) {
+            //    $values[0]['value'] = json_encode($values, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+            //}
 
             if ($configFieldType === 'int') {
                 $item[$configFieldName] = (int)$values[0]['value'];
